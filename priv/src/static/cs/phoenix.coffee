@@ -49,10 +49,8 @@
     reconnectAfterMs: 5000
     heartbeatIntervalMs: 30000
 
-    constructor: (endPoint, opts) ->
-      if opts? && (opts.heartbeatMessage? || opts.sendHeartbeat?)
-        @heartbeatMessage = opts.heartbeatMessage || "heartbeat"
-        @heartbeatIntervalMs = opts.heartbeatIntervalMs || @heartbeatIntervalMs
+    constructor: (endPoint, opts = {}) ->
+      @heartbeatIntervalMs = opts.heartbeatIntervalMs ? @heartbeatIntervalMs
       @endPoint = @expandEndpoint(endPoint)
       @channels = []
       @sendBuffer = []
@@ -68,21 +66,14 @@
 
       "#{@protocol()}://#{location.host}#{endPoint}"
 
-    isReady: ->
-      @conn? && @conn.readyState == WebSocket.OPEN
 
     close: (callback, code, reason) ->
       if @conn?
-        @conn.onclose = =>
-        if code? && !isNaN(code)
-          @conn.close(code, reason || '')
-        else
-          @conn.close()
+        @conn.onclose = => #noop
+        if code? then @conn.close(code, reason ? "") else @conn.close()
         @conn = null
       callback?()
 
-    sendHeartbeat: ->
-      @conn.send(@heartbeatMessage)
 
     reconnect: ->
       @close =>
@@ -100,7 +91,7 @@
 
     onOpen: ->
       clearInterval(@reconnectTimer)
-      @heartbeatTimer = setInterval(@sendHeartbeat, @heartbeatIntervalMs)
+      @heartbeatTimer = setInterval (=> @sendHeartbeat() ), @heartbeatIntervalMs
       @rejoinAll()
 
 
@@ -114,11 +105,11 @@
     onError: (error) -> console.log?("WS error: ", error)
 
     connectionState: ->
-      switch @conn?.readyState ? 3
-        when WebSocket.CONNECTING then "connecting"
-        when WebSocket.OPEN then "open"
-        when WebSocket.CLOSING then "closing"
-        when WebSocket.CLOSED then "closed"
+      switch @conn?.readyState
+        when WebSocket.CONNECTING   then "connecting"
+        when WebSocket.OPEN         then "open"
+        when WebSocket.CLOSING      then "closing"
+        when WebSocket.CLOSED, null then "closed"
 
 
     isConnected: -> @connectionState() is "open"
@@ -149,6 +140,10 @@
         callback()
       else
         @sendBuffer.push callback
+
+
+    sendHeartbeat: ->
+      @send(channel: "phoenix", topic: "conn", event: "heartbeat", message: {})
 
 
     flushSendBuffer: ->
