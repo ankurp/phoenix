@@ -104,10 +104,16 @@
 
       Socket.prototype.heartbeatIntervalMs = 30000;
 
+      Socket.prototype.heartbeatMessage = "ping";
+
       function Socket(endPoint, opts) {
-        if ((opts != null) && ((opts.heartbeatMessage != null) || (opts.sendHeartbeat != null))) {
-          this.heartbeatMessage = opts.heartbeatMessage || "heartbeat";
-          this.heartbeatIntervalMs = opts.heartbeatIntervalMs || this.heartbeatIntervalMs;
+        if (opts != null) {
+          if (opts.heartbeatMessage != null) {
+            this.heartbeatMessage = opts.heartbeatMessage;
+          }
+          if (opts.heartbeatIntervalMs != null) {
+            this.heartbeatIntervalMs = opts.heartbeatIntervalMs;
+          }
         }
         this.endPoint = this.expandEndpoint(endPoint);
         this.channels = [];
@@ -154,7 +160,7 @@
       };
 
       Socket.prototype.sendHeartbeat = function() {
-        return this.conn.send(this.heartbeatMessage);
+        return socket.send(this.heartbeatMessage);
       };
 
       Socket.prototype.reconnect = function() {
